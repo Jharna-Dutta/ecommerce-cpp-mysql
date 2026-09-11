@@ -6,7 +6,7 @@
             "type": "shell",
             "command": "g++",
             "args": [
-                "-std=c++17",
+                "-std=gnu++17",
                 "-g",
                 "main.cpp",
                 "db.cpp",
@@ -15,6 +15,27 @@
             ],
             "group": {
                 "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "Build tests",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-std=gnu++17",
+                "-I.",
+                "tests/test_main.cpp",
+                "tests/test_sha256.cpp",
+                "tests/test_auth.cpp",
+                "tests/test_db.cpp",
+                "db.cpp",
+                "-o",
+                "tests/run_tests.exe"
+            ],
+            "group": {
+                "kind": "test",
                 "isDefault": true
             },
             "problemMatcher": ["$gcc"]

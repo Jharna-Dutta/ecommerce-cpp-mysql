@@ -2,13 +2,10 @@
 #include <vector>
 #include <string>
 #include <limits>
-#include <random>
-#include <sstream>
-#include <iomanip>
 
 #include "db.hpp"
 #include "models.hpp"
-#include "sha256.hpp"
+#include "auth.hpp"
 
 using namespace std;
 
@@ -40,24 +37,9 @@ void printProducts(const vector<Product>& products) {
     }
 }
 
-// Generates a random salt as a hex string (numBytes*2 hex characters).
-// Uses random_device to seed, which pulls from the OS's entropy source.
-string generateSalt(size_t numBytes = 16) {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> dist(0, 255);
-
-    std::ostringstream oss;
-    oss << std::hex << std::setfill('0');
-    for (size_t i = 0; i < numBytes; ++i) {
-        oss << std::setw(2) << dist(gen);
-    }
-    return oss.str();
-}
-
 bool registerUser(const string& name, const string& email, const string& password) {
     string salt = generateSalt();
-    string hash = sha256Hex(salt + password);
+    string hash = hashPassword(salt, password);
     // Note: the password itself never goes into the SQL string -- only its
     // hash and the salt do, and both are hex ([0-9a-f]), so escapeSql isn't
     // even needed for them.
@@ -82,7 +64,7 @@ bool login(const string& email, const string& password, User& outUser) {
 
     const string& salt = rows[0][3];
     const string& storedHash = rows[0][4];
-    string attemptHash = sha256Hex(salt + password);
+    string attemptHash = hashPassword(salt, password);
 
     if (attemptHash != storedHash) return false; // wrong password
 

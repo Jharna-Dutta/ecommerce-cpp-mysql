@@ -1,3 +1,6 @@
 db_config.cnf
 *.exe
 *.o
+register.json
+login.json
+order.json

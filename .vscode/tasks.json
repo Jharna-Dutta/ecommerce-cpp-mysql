@@ -10,6 +10,7 @@
                 "-g",
                 "main.cpp",
                 "db.cpp",
+                "service.cpp",
                 "-o",
                 "app.exe"
             ],
@@ -17,6 +18,23 @@
                 "kind": "build",
                 "isDefault": true
             },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "Build API server",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-std=gnu++17",
+                "-g",
+                "api_server.cpp",
+                "db.cpp",
+                "service.cpp",
+                "-o",
+                "api_server.exe",
+                "-lws2_32"
+            ],
+            "group": "build",
             "problemMatcher": ["$gcc"]
         },
         {

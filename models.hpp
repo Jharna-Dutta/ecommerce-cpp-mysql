@@ -16,4 +16,11 @@ struct User {
     std::string email;
 };
 
+struct Order {
+    int id;
+    double total;
+    std::string status;
+    std::string createdAt;
+};
+
 #endif

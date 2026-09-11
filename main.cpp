@@ -2,9 +2,13 @@
 #include <vector>
 #include <string>
 #include <limits>
+#include <random>
+#include <sstream>
+#include <iomanip>
 
 #include "db.hpp"
 #include "models.hpp"
+#include "sha256.hpp"
 
 using namespace std;
 
@@ -36,9 +40,30 @@ void printProducts(const vector<Product>& products) {
     }
 }
 
-bool registerUser(const string& name, const string& email) {
-    string q = "INSERT INTO users (name, email) VALUES ('"
-             + escapeSql(name) + "', '" + escapeSql(email) + "');";
+// Generates a random salt as a hex string (numBytes*2 hex characters).
+// Uses random_device to seed, which pulls from the OS's entropy source.
+string generateSalt(size_t numBytes = 16) {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dist(0, 255);
+
+    std::ostringstream oss;
+    oss << std::hex << std::setfill('0');
+    for (size_t i = 0; i < numBytes; ++i) {
+        oss << std::setw(2) << dist(gen);
+    }
+    return oss.str();
+}
+
+bool registerUser(const string& name, const string& email, const string& password) {
+    string salt = generateSalt();
+    string hash = sha256Hex(salt + password);
+    // Note: the password itself never goes into the SQL string -- only its
+    // hash and the salt do, and both are hex ([0-9a-f]), so escapeSql isn't
+    // even needed for them.
+
+    string q = "INSERT INTO users (name, email, salt, password_hash) VALUES ('"
+             + escapeSql(name) + "', '" + escapeSql(email) + "', '" + salt + "', '" + hash + "');";
     string result = runQuery(q);
 
     if (result.find("ERROR") != string::npos) {
@@ -49,10 +74,17 @@ bool registerUser(const string& name, const string& email) {
     return true;
 }
 
-bool login(const string& email, User& outUser) {
-    string q = "SELECT id, name, email FROM users WHERE email='" + escapeSql(email) + "';";
+bool login(const string& email, const string& password, User& outUser) {
+    string q = "SELECT id, name, email, salt, password_hash FROM users WHERE email='"
+             + escapeSql(email) + "';";
     auto rows = parseRows(runQuery(q));
-    if (rows.empty() || rows[0].size() < 3) return false;
+    if (rows.empty() || rows[0].size() < 5) return false;
+
+    const string& salt = rows[0][3];
+    const string& storedHash = rows[0][4];
+    string attemptHash = sha256Hex(salt + password);
+
+    if (attemptHash != storedHash) return false; // wrong password
 
     outUser.id = stoi(rows[0][0]);
     outUser.name = rows[0][1];
@@ -118,19 +150,24 @@ int main() {
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
         if (choice == 1) {
-            string name, email;
-            cout << "Name: ";  getline(cin, name);
-            cout << "Email: "; getline(cin, email);
-            registerUser(name, email);
+            string name, email, password;
+            cout << "Name: ";     getline(cin, name);
+            cout << "Email: ";    getline(cin, email);
+            cout << "Password: "; getline(cin, password);
+            registerUser(name, email, password);
 
         } else if (choice == 2) {
-            string email;
-            cout << "Email: "; getline(cin, email);
-            if (login(email, currentUser)) {
+            string email, password;
+            cout << "Email: ";    getline(cin, email);
+            cout << "Password: "; getline(cin, password);
+            if (login(email, password, currentUser)) {
                 loggedIn = true;
                 cout << "Welcome, " << currentUser.name << "!\n";
             } else {
-                cout << "No account with that email. Please register first.\n";
+                // Deliberately vague: don't reveal whether the email exists
+                // or the password was wrong -- telling an attacker which one
+                // failed makes it easier to enumerate valid accounts.
+                cout << "Incorrect email or password.\n";
             }
 
         } else if (choice == 3) {

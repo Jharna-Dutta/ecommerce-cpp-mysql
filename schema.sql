@@ -14,9 +14,11 @@ DROP TABLE IF EXISTS products;
 DROP TABLE IF EXISTS users;
 
 CREATE TABLE users (
-    id    INT AUTO_INCREMENT PRIMARY KEY,
-    name  VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    name          VARCHAR(100) NOT NULL,
+    email         VARCHAR(100) UNIQUE NOT NULL,
+    salt          VARCHAR(32) NOT NULL,   -- random per-user salt, hex-encoded
+    password_hash VARCHAR(64) NOT NULL    -- SHA-256(salt + password), hex-encoded
 );
 
 CREATE TABLE products (
